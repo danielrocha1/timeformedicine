@@ -1,58 +1,114 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AdherenceReportCard } from '@/components/adherence-report-card';
+import { DoseHistoryItem } from '@/components/dose-history-item';
 import { EmptyState } from '@/components/empty-state';
-import { Card } from '@/components/ui/card';
+import { TreatmentCalendar } from '@/components/treatment-calendar';
 import { BorderRadius, Spacing } from '@/constants/theme';
 import { useMedications } from '@/contexts/medications-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useTabBarHeight } from '@/hooks/use-tab-bar-height';
-import { formatDateTime } from '@/lib/medication-utils';
+
+type HistoryTab = 'history' | 'calendar' | 'adherence';
+
+const TABS: { id: HistoryTab; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'history', label: 'Histórico', icon: 'list' },
+  { id: 'calendar', label: 'Calendário', icon: 'calendar' },
+  { id: 'adherence', label: 'Adesão', icon: 'stats-chart' },
+];
 
 export default function HistoryScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
-  const { doseHistory, loading } = useMedications();
+  const { unifiedHistory, treatmentCalendar, adherenceReport, loading, medications } =
+    useMedications();
+  const [activeTab, setActiveTab] = useState<HistoryTab>('history');
+
+  const hasData = medications.length > 0 || unifiedHistory.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Histórico de doses</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Registro das doses que você tomou</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Histórico e Tratamento</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          Acompanhe doses, calendário e adesão
+        </Text>
       </View>
+
+      <View style={[styles.tabBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {TABS.map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <Pressable
+              key={tab.id}
+              onPress={() => setActiveTab(tab.id)}
+              style={[
+                styles.tab,
+                active && { backgroundColor: `${colors.primary}18` },
+              ]}
+            >
+              <Ionicons
+                name={tab.icon}
+                size={18}
+                color={active ? colors.primary : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.tabLabel,
+                  { color: active ? colors.primary : colors.textSecondary },
+                  active && styles.tabLabelActive,
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} />
-      ) : doseHistory.length === 0 ? (
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+      ) : !hasData ? (
         <EmptyState
           icon="clipboard-outline"
-          title="Nenhuma dose registrada"
-          description="Quando você marcar 'Tomei' na tela inicial, o histórico aparecerá aqui."
+          title="Nenhum registro ainda"
+          description="Cadastre medicamentos e marque doses para ver o histórico completo, calendário e relatório de adesão."
         />
+      ) : activeTab === 'history' ? (
+        unifiedHistory.length === 0 ? (
+          <EmptyState
+            icon="time-outline"
+            title="Nenhuma dose registrada"
+            description="Quando você marcar 'Tomei' ou interagir com os alarmes, o histórico aparecerá aqui."
+          />
+        ) : (
+          <FlatList
+            data={unifiedHistory}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + Spacing.md }]}
+            renderItem={({ item }) => <DoseHistoryItem entry={item} />}
+          />
+        )
       ) : (
-        <FlatList
-          data={doseHistory}
-          keyExtractor={(item) => item.id}
+        <ScrollView
           contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + Spacing.md }]}
-          renderItem={({ item }) => (
-            <Card>
-              <View style={styles.row}>
-                <View style={[styles.icon, { backgroundColor: `${colors.secondary}22` }]}>
-                  <Ionicons name="checkmark-circle" size={22} color={colors.secondary} />
-                </View>
-                <View style={styles.info}>
-                  <Text style={[styles.name, { color: colors.text }]}>{item.medicationName}</Text>
-                  <Text style={[styles.dosage, { color: colors.textSecondary }]}>{item.dosage}</Text>
-                  <Text style={[styles.time, { color: colors.textSecondary }]}>
-                    {formatDateTime(new Date(item.takenAt))}
-                  </Text>
-                </View>
-                <Text style={[styles.pills, { color: colors.primary }]}>-{item.pillsConsumed}</Text>
-              </View>
-            </Card>
-          )}
-        />
+          showsVerticalScrollIndicator={false}
+        >
+          {activeTab === 'calendar' && <TreatmentCalendar days={treatmentCalendar} />}
+          {activeTab === 'adherence' && <AdherenceReportCard report={adherenceReport} />}
+        </ScrollView>
       )}
     </View>
   );
@@ -63,12 +119,25 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md },
   title: { fontSize: 28, fontWeight: '800' },
   subtitle: { fontSize: 14, marginTop: 4 },
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  tabLabel: { fontSize: 12, fontWeight: '600' },
+  tabLabelActive: { fontWeight: '800' },
+  loader: { marginTop: Spacing.xxl },
   list: { paddingHorizontal: Spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  icon: { width: 40, height: 40, borderRadius: BorderRadius.md, alignItems: 'center', justifyContent: 'center', marginRight: Spacing.md },
-  info: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '700' },
-  dosage: { fontSize: 13, marginTop: 2 },
-  time: { fontSize: 12, marginTop: 4 },
-  pills: { fontSize: 16, fontWeight: '700' },
 });

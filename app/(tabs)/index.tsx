@@ -3,9 +3,12 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DashboardSummary } from '@/components/dashboard-summary';
 import { EmptyState } from '@/components/empty-state';
+import { GroupedDoseBanner } from '@/components/intelligence-modals';
 import { MedicationCard } from '@/components/medication-card';
 import { Spacing } from '@/constants/theme';
+import { useSettings } from '@/contexts/settings-context';
 import { useMedications } from '@/contexts/medications-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useTabBarHeight } from '@/hooks/use-tab-bar-height';
@@ -16,8 +19,23 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
   const router = useRouter();
-  const { medications, loading, takeDose } = useMedications();
-  const upcoming = buildUpcomingDoses(medications);
+  const { settings } = useSettings();
+  const {
+    medications,
+    loading,
+    takeDose,
+    doseOccurrences,
+    activeGroupedSlots,
+    openGroupedDoseFlow,
+    openForgotDoseFlow,
+    unifiedHistory,
+    adherenceReport,
+  } = useMedications();
+  const upcoming = buildUpcomingDoses(medications, doseOccurrences);
+  const nextDose = upcoming.find((u) => u.isNext) ?? upcoming[0];
+  const lastDose = unifiedHistory.find((h) => h.status === 'on_time' || h.status === 'late');
+  const groupedBanner = activeGroupedSlots.find((g) => g.items.length > 1);
+  const missedCount = upcoming.filter((u) => u.hasMissedDoses).length;
   const lowStockCount = upcoming.filter((u) => u.isLowStock).length;
 
   return (
@@ -27,6 +45,14 @@ export default function DashboardScreen() {
           <Text style={[styles.greeting, { color: colors.textSecondary }]}>Time for Medicine</Text>
           <Text style={[styles.title, { color: colors.text }]}>Seus lembretes</Text>
         </View>
+        {missedCount > 0 && (
+          <View style={[styles.alertPill, { backgroundColor: `${colors.danger}22` }]}>
+            <Ionicons name="alert-circle" size={16} color={colors.danger} />
+            <Text style={[styles.alertText, { color: colors.danger }]}>
+              {missedCount} dose{missedCount !== 1 ? 's' : ''} esquecida{missedCount !== 1 ? 's' : ''}
+            </Text>
+          </View>
+        )}
         {lowStockCount > 0 && (
           <View style={[styles.alertPill, { backgroundColor: `${colors.warning}22` }]}>
             <Ionicons name="warning" size={16} color={colors.warning} />
@@ -47,8 +73,25 @@ export default function DashboardScreen() {
           contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + 80 }]}
           showsVerticalScrollIndicator={false}
         >
+          <DashboardSummary
+            nextDose={nextDose}
+            lastDose={lastDose}
+            adherencePercent={adherenceReport.adherencePercent}
+            userName={settings.profile.fullName}
+          />
+          {groupedBanner && (
+            <GroupedDoseBanner
+              group={groupedBanner}
+              onPress={() => openGroupedDoseFlow(groupedBanner.slotKey)}
+            />
+          )}
           {upcoming.map((item) => (
-            <MedicationCard key={item.medication.id} item={item} onTakeDose={takeDose} />
+            <MedicationCard
+              key={item.medication.id}
+              item={item}
+              onTakeDose={takeDose}
+              onForgotDose={openForgotDoseFlow}
+            />
           ))}
         </ScrollView>
       )}

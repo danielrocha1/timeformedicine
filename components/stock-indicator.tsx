@@ -1,13 +1,16 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BorderRadius, Spacing } from '@/constants/theme';
+import { formatAmountPerDose, getAmountUnitLabel } from '@/lib/medication-utils';
 import { useThemeColors } from '@/hooks/use-theme-colors';
+import type { MedicationType } from '@/types';
 
 interface StockIndicatorProps {
   stockTotal: number;
   pillsPerDose: number;
   remainingDoses: number;
   isLowStock: boolean;
+  medicationType?: MedicationType;
   compact?: boolean;
 }
 
@@ -16,9 +19,11 @@ export function StockIndicator({
   pillsPerDose,
   remainingDoses,
   isLowStock,
+  medicationType = 'tablet',
   compact,
 }: StockIndicatorProps) {
   const colors = useThemeColors();
+  const unit = getAmountUnitLabel(medicationType, stockTotal);
   const fillPercent = Math.min(100, (remainingDoses / Math.max(remainingDoses, 10)) * 100);
   const barColor =
     stockTotal <= 0 ? colors.stockEmpty : isLowStock ? colors.stockLow : colors.stockHigh;
@@ -27,7 +32,7 @@ export function StockIndicator({
     <View style={compact ? styles.compact : undefined}>
       <View style={styles.row}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>
-          {stockTotal} comp. · {remainingDoses} dose{remainingDoses !== 1 ? 's' : ''}
+          {stockTotal} {unit} · {remainingDoses} dose{remainingDoses !== 1 ? 's' : ''}
         </Text>
         {isLowStock && stockTotal > 0 && (
           <Text style={[styles.badge, { color: colors.warning, backgroundColor: `${colors.warning}22` }]}>
@@ -53,7 +58,7 @@ export function StockIndicator({
       </View>
       {!compact && (
         <Text style={[styles.hint, { color: colors.textSecondary }]}>
-          {pillsPerDose} comprimido{pillsPerDose !== 1 ? 's' : ''} por dose
+          {formatAmountPerDose(pillsPerDose, medicationType)}
         </Text>
       )}
     </View>

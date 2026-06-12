@@ -74,3 +74,8 @@ export const Fonts = Platform.select({
 
 export const LOW_STOCK_DOSE_THRESHOLD = 3;
 export const QUICK_INTERVALS = [6, 8, 12, 24] as const;
+export const DEFAULT_ALARM_TOLERANCE_MINUTES = 90;
+export const DEFAULT_ALARM_SNOOZE_MINUTES = 15;
+export const ALARM_FOLLOWUP_DELAY_MINUTES = 15;
+export const DOSE_PROJECTION_DAYS = 14;
+export const ON_TIME_GRACE_MINUTES = 5;

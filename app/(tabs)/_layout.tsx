@@ -24,7 +24,7 @@ export default function TabsLayout() {
           paddingBottom: Math.max(insets.bottom, 8),
           height: tabBarHeight,
         },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600', marginBottom: 2 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginBottom: 2 },
       }}
     >
       <Tabs.Screen
@@ -35,10 +35,24 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="medications"
+        options={{
+          title: 'Medicamentos',
+          tabBarIcon: ({ color, size }) => <Ionicons name="medkit" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="history"
         options={{
           title: 'Histórico',
-          tabBarIcon: ({ color, size }) => <Ionicons name="time" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
         }}
       />
     </Tabs>
