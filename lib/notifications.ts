@@ -16,6 +16,10 @@ import type { AlarmActionId, DoseOccurrence, Medication } from '@/types';
 
 const HORIZON_HOURS = 48;
 
+export function isNativeNotificationsSupported(): boolean {
+  return Platform.OS === 'ios' || Platform.OS === 'android';
+}
+
 export const ALARM_CATEGORY_PRIMARY = 'DOSE_ALARM_PRIMARY';
 export const ALARM_CATEGORY_FOLLOWUP = 'DOSE_ALARM_FOLLOWUP';
 export const ALARM_CATEGORY_GROUP = 'DOSE_ALARM_GROUP';
@@ -45,6 +49,7 @@ export interface AlarmNotificationPayload {
 }
 
 export function setupNotificationHandler(): void {
+  if (!isNativeNotificationsSupported()) return;
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -57,6 +62,7 @@ export function setupNotificationHandler(): void {
 }
 
 export async function setupAlarmCategories(): Promise<void> {
+  if (!isNativeNotificationsSupported()) return;
   await Notifications.setNotificationCategoryAsync(ALARM_CATEGORY_PRIMARY, [
     {
       identifier: 'TOMEI_AGORA',
@@ -103,6 +109,7 @@ export async function setupAlarmCategories(): Promise<void> {
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
+  if (!isNativeNotificationsSupported()) return false;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('dose-alarms', {
       name: 'Alarmes de medicamentos',
@@ -195,6 +202,7 @@ export async function scheduleAlarmChain(
   medication: Medication,
   occurrence: DoseOccurrence,
 ): Promise<void> {
+  if (!isNativeNotificationsSupported()) return;
   const scheduledFor = new Date(occurrence.scheduledFor);
   const now = Date.now();
   const toleranceMs = getAlarmToleranceMs(medication);
@@ -295,6 +303,7 @@ export async function scheduleGroupAlarmChain(
   items: Array<{ medication: Medication; occurrence: DoseOccurrence }>,
   slotKey: string,
 ): Promise<void> {
+  if (!isNativeNotificationsSupported()) return;
   if (items.length === 0) return;
   const scheduledFor = new Date(items[0].occurrence.scheduledFor);
   const now = Date.now();
@@ -398,6 +407,7 @@ export async function syncAllGroupedAlarmNotifications(
   medications: Medication[],
   occurrences: DoseOccurrence[],
 ): Promise<Medication[]> {
+  if (!isNativeNotificationsSupported()) return medications;
   const now = new Date();
   const horizonMs = HORIZON_HOURS * 60 * 60 * 1000;
 
@@ -472,6 +482,7 @@ export function parseAnyAlarmPayload(data: unknown): AnyAlarmPayload | null {
 export async function scheduleLowStockNotification(
   medication: Medication,
 ): Promise<string | undefined> {
+  if (!isNativeNotificationsSupported()) return undefined;
   const remaining = getRemainingDoses(medication);
   if (remaining >= LOW_STOCK_DOSE_THRESHOLD || medication.stockTotal <= 0) return undefined;
 
@@ -492,6 +503,7 @@ export async function syncMedicationAlarmNotifications(
   occurrences: DoseOccurrence[],
   previous?: Pick<Medication, 'lowStockNotificationId'>,
 ): Promise<Medication> {
+  if (!isNativeNotificationsSupported()) return medication;
   await cancelNotification(previous?.lowStockNotificationId);
 
   const horizonMs = HORIZON_HOURS * 60 * 60 * 1000;

@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 import { useMedications } from '@/contexts/medications-context';
-import { parseAnyAlarmPayload, parseGroupAlarmPayload } from '@/lib/notifications';
+import { isNativeNotificationsSupported, parseAnyAlarmPayload, parseGroupAlarmPayload } from '@/lib/notifications';
 import type { AlarmActionId } from '@/types';
 
 function extractActionId(response: Notifications.NotificationResponse): AlarmActionId | null {
@@ -26,6 +26,8 @@ export function useAlarmResponseHandler(): void {
   openGroupRef.current = openGroupedDoseFlow;
 
   useEffect(() => {
+    if (!isNativeNotificationsSupported()) return;
+
     const processResponse = (response: Notifications.NotificationResponse) => {
       const data = response.notification.request.content.data;
       const groupPayload = parseGroupAlarmPayload(data);
