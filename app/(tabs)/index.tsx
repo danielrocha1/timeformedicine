@@ -1,98 +1,98 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { EmptyState } from '@/components/empty-state';
+import { MedicationCard } from '@/components/medication-card';
+import { Spacing } from '@/constants/theme';
+import { useMedications } from '@/contexts/medications-context';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useTabBarHeight } from '@/hooks/use-tab-bar-height';
+import { buildUpcomingDoses } from '@/lib/medication-utils';
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useTabBarHeight();
+  const router = useRouter();
+  const { medications, loading, takeDose } = useMedications();
+  const upcoming = buildUpcomingDoses(medications);
+  const lowStockCount = upcoming.filter((u) => u.isLowStock).length;
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.greeting, { color: colors.textSecondary }]}>Time for Medicine</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Seus lembretes</Text>
+        </View>
+        {lowStockCount > 0 && (
+          <View style={[styles.alertPill, { backgroundColor: `${colors.warning}22` }]}>
+            <Ionicons name="warning" size={16} color={colors.warning} />
+            <Text style={[styles.alertText, { color: colors.warning }]}>{lowStockCount} com estoque baixo</Text>
+          </View>
+        )}
+      </View>
+      {loading ? (
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+      ) : upcoming.length === 0 ? (
+        <EmptyState
+          icon="medkit-outline"
+          title="Nenhum medicamento cadastrado ainda"
+          description="Toque no botão + para adicionar seu primeiro remédio e receber lembretes no horário certo."
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      ) : (
+        <ScrollView
+          contentContainerStyle={[styles.list, { paddingBottom: tabBarHeight + 80 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {upcoming.map((item) => (
+            <MedicationCard key={item.medication.id} item={item} onTakeDose={takeDose} />
+          ))}
+        </ScrollView>
+      )}
+      <Pressable
+        onPress={() => router.push('/medication/new')}
+        style={({ pressed }) => [
+          styles.fab,
+          { backgroundColor: colors.primary, bottom: tabBarHeight + Spacing.md, opacity: pressed ? 0.9 : 1 },
+        ]}
+      >
+        <Ionicons name="add" size={32} color="#FFFFFF" />
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: { flex: 1 },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  greeting: { fontSize: 14, fontWeight: '500' },
+  title: { fontSize: 28, fontWeight: '800', marginTop: 2 },
+  alertPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 6, borderRadius: 20 },
+  alertText: { fontSize: 12, fontWeight: '600' },
+  loader: { marginTop: Spacing.xxl },
+  list: { paddingHorizontal: Spacing.md },
+  fab: {
     position: 'absolute',
+    right: Spacing.lg,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
 });
