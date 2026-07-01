@@ -12,6 +12,7 @@ import { isWithinQuietHours } from '@/lib/user-settings';
 import { getSlotKey } from '@/lib/dose-intelligence';
 import { getAlarmToleranceMs, getSchedulableOccurrences } from '@/lib/dose-occurrences';
 import { formatAmountPerDose, getRemainingDoses } from '@/lib/medication-utils';
+import { setNativeAndroidAlarm } from '@/lib/android-alarm';
 import type { AlarmActionId, DoseOccurrence, Medication } from '@/types';
 
 const HORIZON_HOURS = 48;
@@ -215,6 +216,21 @@ export async function scheduleAlarmChain(
 
   if (scheduledFor.getTime() > now) {
     const alert = resolveAlertPresentation(scheduledFor);
+    
+    // Agendar alarme nativo no Android se suportado
+    // Nota: Agendamos apenas se for a próxima dose imediata para não poluir o Relógio do Android
+    if (Platform.OS === 'android') {
+      const isNextDose = medication.nextDoseAt === occurrence.scheduledFor;
+      if (isNextDose) {
+        await setNativeAndroidAlarm({
+          hour: scheduledFor.getHours(),
+          minutes: scheduledFor.getMinutes(),
+          message: `💊 ${medication.name} (${medication.dosage})`,
+          skipUi: true,
+        });
+      }
+    }
+
     await Notifications.scheduleNotificationAsync({
       identifier: primaryAlarmId(occurrence.id),
       content: {
@@ -320,6 +336,16 @@ export async function scheduleGroupAlarmChain(
     medicationName: medication.name,
     dosage: medication.dosage,
   }));
+
+  // Agendar alarme nativo no Android para o grupo
+  if (Platform.OS === 'android') {
+    await setNativeAndroidAlarm({
+      hour: scheduledFor.getHours(),
+      minutes: scheduledFor.getMinutes(),
+      message: `Hora de tomar seus medicamentos (${items.length})`,
+      skipUi: true,
+    });
+  }
 
   await Notifications.scheduleNotificationAsync({
     identifier: groupAlarmId(slotKey),

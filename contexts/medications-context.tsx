@@ -475,6 +475,8 @@ export function MedicationsProvider({ children }: { children: React.ReactNode })
       };
 
       updatedOccurrences = refreshMedicationOccurrences(updatedMed, updatedOccurrences, takenAt);
+      
+      // Sincroniza alarmes: como o nextDoseAt mudou, o novo alarme nativo será agendado
       const syncedMeds = await syncAllAlarms(
         medications.map((m) => (m.id === med.id ? updatedMed : m)),
         updatedOccurrences,
@@ -529,6 +531,8 @@ export function MedicationsProvider({ children }: { children: React.ReactNode })
       };
 
       updatedOccurrences = refreshMedicationOccurrences(updatedMed, updatedOccurrences, now);
+      
+      // Sincroniza alarmes: agenda o próximo alarme nativo após marcar como esquecida
       const syncedMeds = await syncAllAlarms(
         medications.map((m) => (m.id === med.id ? updatedMed : m)),
         updatedOccurrences,
